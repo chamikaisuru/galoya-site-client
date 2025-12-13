@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  
+  --font-sans: 'Montserrat', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+  
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  /* Dark Luxury Theme */
+  --background: 240 5% 10%; /* #18181b - Zinc 900-ish but slightly deeper */
+  --foreground: 46 30% 90%; /* Off-white with a hint of gold warmth */
+
+  --card: 240 5% 13%;
+  --card-foreground: 46 30% 90%;
+
+  --popover: 240 5% 13%;
+  --popover-foreground: 46 30% 90%;
+
+  --primary: 46 65% 52%; /* #daa520 - Goldenrod/Gold */
+  --primary-foreground: 240 5% 10%;
+
+  --secondary: 240 4% 20%;
+  --secondary-foreground: 46 30% 90%;
+
+  --muted: 240 4% 20%;
+  --muted-foreground: 240 5% 60%;
+
+  --accent: 46 65% 52%;
+  --accent-foreground: 240 5% 10%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 46 30% 90%;
+
+  --border: 240 4% 20%;
+  --input: 240 4% 20%;
+  --ring: 46 65% 52%;
+
+  --radius: 0.25rem;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+}
+
+.gold-text {
+  background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gold-border {
+  border: 1px solid transparent;
+  background: linear-gradient(to right, #1a1a1a, #1a1a1a) padding-box,
+              linear-gradient(to right, #bf953f, #b38728) border-box;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}

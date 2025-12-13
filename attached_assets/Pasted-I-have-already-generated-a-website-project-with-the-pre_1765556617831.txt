@@ -1,0 +1,92 @@
+I have already generated a website project with the previous prompt.  
+Now I want you to MODIFY and UPGRADE the existing website with the following requirements:
+
+======================
+GALLERY PAGE → PORTFOLIO STYLE
+======================
+1. Convert the current Gallery page into a **Portfolio style page**, suitable for a distillery company where we upload:
+   - CSR event images
+   - Plantation visits
+   - Distillery process photos
+   - Bottle marketing shoots
+2. Structure should support:
+   - **Portfolio Categories** (CSR Events / Plantation / Distillery / Bottle Shots)
+   - **Portfolio Items** (each CSR event = one item)
+
+======================
+CSR PORTFOLIO ITEM (IMPORTANT)
+======================
+For each CSR event page:
+1. Ability to upload **multiple images** (5–20 per event)
+2. These images should appear in:
+   - **Lightbox gallery**
+   - **Slider/Carousel view**
+3. Navigation:
+   - Back to Portfolio button
+   - Next / Previous CSR event (optional)
+
+======================
+WORDPRESS-FRIENDLY STRUCTURE
+======================
+I want this project to mirror the structure of a future WordPress website.  
+So please update the code according to:
+
+1. Keep the folder structure clean (assets, pages, templates, json).
+2. Write components in a way that can later be copied into Elementor (free version).
+3. Use only features Elementor FREE supports (no pro widgets).
+4. Avoid complex JS frameworks — keep it pure JS so it can embed into WordPress easily.
+5. Re-organize gallery/portfolio code into small reusable templates.
+
+======================
+EMAIL SUBMISSION FORM (REQUIRED)
+======================
+Modify Contact Page:
+- Include a working static email submission form using:
+  - Formspree (recommended)
+  - or Netlify Forms (commented instructions)
+- Add:
+  - Name
+  - Email
+  - Phone
+  - Message
+- Success + Error message UI
+
+======================
+FRONTEND IMPROVEMENTS
+======================
+1. Add Lazy-loading for all gallery/CSR images.
+2. Make image grids responsive.
+3. Add a simple JS-powered slider for CSR multi-image pages.
+4. Add hover animations for portfolio thumbnails.
+5. Improve visual style to match a “Premium arrack brand portfolio”.
+
+======================
+MULTILINGUAL SUPPORT
+======================
+Keep previous language system:
+- English (default)
+- Sinhala
+- Tamil
+
+Ensure new Portfolio + CSR pages also include translation placeholders in:
+- en.json
+- si.json
+- ta.json
+
+======================
+DELIVERABLES
+======================
+1. Updated portfolio.html (previous gallery.html replaced)
+2. New CSR event template page: portfolio/csr-event.html  
+   (Use placeholders for 2 sample CSR events)
+3. Slider/lightbox JS updates
+4. Updated navigation to link Portfolio page
+5. Updated JSON translation files
+6. Updated Contact page with working email form
+7. README updated with:
+   - how to add new CSR events
+   - how to add multiple images
+   - how to upload to WordPress later
+8. Keep everything deployable as a static site.
+
+PLEASE MODIFY THE EXISTING PROJECT — DO NOT CREATE A NEW ONE.

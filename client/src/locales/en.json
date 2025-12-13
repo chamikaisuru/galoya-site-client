@@ -1,0 +1,71 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About Us",
+    "brand": "Our Brand",
+    "products": "Products",
+    "sustainability": "Sustainability",
+    "gallery": "Portfolio",
+    "contact": "Contact"
+  },
+  "footer": {
+    "disclaimer": "No online sales. Galoya Arrack is distributed via bars and licensed wine shops only.",
+    "rights": "© 2025 Galoya Arrack. All rights reserved.",
+    "address": "Galoya Plantations, Sri Lanka"
+  },
+  "home": {
+    "hero_title": "The Spirit of Ceylon",
+    "hero_subtitle": "Premium Sugarcane Arrack crafted with tradition and passion.",
+    "cta_learn": "Discover Our Story",
+    "cta_contact": "Get in Touch",
+    "featured_title": "Our Signature Collection",
+    "production_title": "From Cane to Cork",
+    "production_desc": "Experience the journey of our single-estate sugarcane arrack, distilled in traditional copper pot stills.",
+    "gallery_title": "Community & Culture"
+  },
+  "about": {
+    "title": "Our Heritage",
+    "story_title": "A Legacy of Distillation",
+    "story_text": "Founded in the heart of Sri Lanka's sugarcane belt, Galoya Arrack represents centuries of distillation expertise. We believe in the purity of ingredients and the patience of time.",
+    "team_title": "Our Master Distillers",
+    "team_text": "Our team combines modern science with ancient wisdom to create spirits of exceptional character."
+  },
+  "brand": {
+    "title": "The Galoya Brand",
+    "story": "Galoya is more than a drink; it's a celebration of Sri Lankan terroir. Our arrack captures the essence of the tropical sun and the fertile soil of the Gal Oya valley.",
+    "awards": "Award Winning Quality"
+  },
+  "products": {
+    "title": "Our Collection",
+    "subtitle": "Explore our range of premium arracks.",
+    "no_sales": "Available exclusively at licensed bars and wine shops.",
+    "details": {
+      "abv": "ABV",
+      "ingredients": "Ingredients",
+      "distribution": "Distribution"
+    }
+  },
+  "sustainability": {
+    "title": "Sustainable by Nature",
+    "plantation_title": "Our Plantation",
+    "plantation_text": "We grow our own sugarcane, ensuring quality from the ground up. Our farming practices respect the local ecosystem.",
+    "community_title": "Community Impact",
+    "community_text": "We define success by the well-being of our community, providing fair employment and supporting local initiatives."
+  },
+  "portfolio": {
+    "title": "Our Portfolio",
+    "subtitle": "A curated collection of our community initiatives, sustainable practices, and distillery moments.",
+    "filter_all": "All Projects",
+    "filter_csr": "CSR Events",
+    "filter_plantation": "Plantation",
+    "filter_distillery": "Distillery"
+  },
+  "contact": {
+    "title": "Get in Touch",
+    "form_name": "Name",
+    "form_email": "Email",
+    "form_message": "Message",
+    "form_send": "Send Message",
+    "info_title": "Visit Us"
+  }
+}
