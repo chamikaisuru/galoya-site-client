@@ -1,14 +1,15 @@
 import { useTranslation } from "react-i18next";
 import ContactForm from "@/components/ContactForm";
-import { MapPin, Phone, Mail } from "lucide-react";
+import { MapPin, Phone, Mail, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Contact() {
   const { t } = useTranslation();
 
   // Galoya Plantations, Hingurana coordinates
   const location = {
-    lat: 7.223836,
-    lng: 81.6756929836367,
+    lat: 7.223967,
+    lng: 81.677320,
     name: "Galoya Plantations, Hingurana, Ampara"
   };
 
@@ -62,35 +63,56 @@ export default function Contact() {
               </div>
             </div>
 
-            {/* Google Maps Embed */}
-            <div className="w-full h-96 bg-white/5 rounded-lg border border-white/10 overflow-hidden">
-              <iframe
-                title="Galoya Plantations Location"
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                style={{ border: 0 }}
-                src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&q=${location.lat},${location.lng}&zoom=14`}
-                allowFullScreen
-              />
-              {/* Fallback if no API key */}
-              {!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center p-8">
-                  <div>
-                    <MapPin className="h-12 w-12 mx-auto mb-4 text-primary" />
-                    <p className="font-bold mb-2">Google Maps</p>
-                    <p className="text-sm text-muted-foreground">Add VITE_GOOGLE_MAPS_API_KEY to .env</p>
-                    <a 
-                      href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block mt-4 text-primary hover:underline"
-                    >
-                      Open in Google Maps →
-                    </a>
+            {/* OpenStreetMap (FREE - No API Key) */}
+            <div className="space-y-4">
+              <div className="w-full h-96 bg-white/5 rounded-lg border border-white/10 overflow-hidden relative">
+                {/* OpenStreetMap Embed - 100% Free */}
+                <iframe
+                  title="Galoya Plantations Location"
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  scrolling="no"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.lng - 0.01}%2C${location.lat - 0.01}%2C${location.lng + 0.01}%2C${location.lat + 0.01}&layer=mapnik&marker=${location.lat}%2C${location.lng}`}
+                  style={{ border: 0 }}
+                />
+                
+                {/* Overlay with location name */}
+                <div className="absolute bottom-4 left-4 right-4 bg-black/80 backdrop-blur p-4 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium">{location.name}</span>
                   </div>
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=15/${location.lat}/${location.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <ExternalLink className="h-5 w-5" />
+                  </a>
                 </div>
-              )}
+              </div>
+
+              {/* Get Directions Buttons */}
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`, '_blank')}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Google Maps
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => window.open(`https://waze.com/ul?ll=${location.lat},${location.lng}&navigate=yes`, '_blank')}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Waze
+                </Button>
+              </div>
             </div>
           </div>
 
