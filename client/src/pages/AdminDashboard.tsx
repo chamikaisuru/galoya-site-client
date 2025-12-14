@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
-import { portfolioItems, PortfolioItem, Category } from "@/data/portfolio";
+import { usePortfolio, useCreatePortfolio, useUpdatePortfolio, useDeletePortfolio } from "@/hooks/usePortfolio";
+import type { PortfolioItem, InsertPortfolioItem } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,15 +27,24 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Plus, Trash2, Edit, LogOut, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, Edit, LogOut, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+
+type Category = "csr" | "plantation" | "distillery" | "bottle_shots";
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [items, setItems] = useState<PortfolioItem[]>(portfolioItems);
+  
+  // Fetch data from database
+  const { data: items, isLoading } = usePortfolio();
+  const createMutation = useCreatePortfolio();
+  const updateMutation = useUpdatePortfolio();
+  const deleteMutation = useDeletePortfolio();
+  
   const [isEditing, setIsEditing] = useState(false);
-  const [currentItem, setCurrentItem] = useState<Partial<PortfolioItem>>({});
+  const [currentItem, setCurrentItem] = useState<Partial<InsertPortfolioItem>>({});
 
   // Check auth
   useEffect(() => {
@@ -49,34 +59,73 @@ export default function AdminDashboard() {
     setLocation("/admin/login");
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this item?")) {
-      setItems(items.filter(item => item.id !== id));
-      toast({ title: "Item Deleted", description: "Portfolio item removed." });
+      try {
+        await deleteMutation.mutateAsync(id);
+        toast({ 
+          title: "Item Deleted", 
+          description: "Portfolio item removed successfully." 
+        });
+      } catch (error) {
+        toast({ 
+          variant: "destructive",
+          title: "Delete Failed", 
+          description: "Could not delete the item." 
+        });
+      }
     }
   };
 
-  const handleSave = () => {
-    // In a real full-stack app, this would send a POST/PUT request to the backend
-    // For mockup, we just update the local state
-    if (currentItem.id) {
-      // Update existing
-      setItems(items.map(item => item.id === currentItem.id ? { ...item, ...currentItem } as PortfolioItem : item));
-      toast({ title: "Item Updated", description: "Changes saved successfully." });
-    } else {
-      // Create new
-      const newItem = {
-        ...currentItem,
-        id: `new-${Date.now()}`,
-        slug: currentItem.title?.toLowerCase().replace(/\s+/g, '-') || "new-item",
-        images: currentItem.images || [currentItem.thumbnail || ""]
-      } as PortfolioItem;
-      setItems([newItem, ...items]);
-      toast({ title: "Item Created", description: "New portfolio item added." });
+  const handleSave = async () => {
+    try {
+      if (!currentItem.title || !currentItem.category || !currentItem.thumbnail) {
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: "Please fill all required fields"
+        });
+        return;
+      }
+
+      if ("id" in currentItem && currentItem.id) {
+        // Update existing
+        await updateMutation.mutateAsync({ 
+          id: currentItem.id, 
+          data: currentItem as Partial<InsertPortfolioItem>
+        });
+        toast({ title: "Item Updated", description: "Changes saved successfully." });
+      } else {
+        // Create new
+        const newItem: InsertPortfolioItem = {
+          slug: currentItem.title?.toLowerCase().replace(/\s+/g, '-') || "new-item",
+          title: currentItem.title!,
+          category: currentItem.category!,
+          thumbnail: currentItem.thumbnail!,
+          date: currentItem.date || new Date().toLocaleDateString(),
+          description: currentItem.description || "",
+          images: currentItem.images || [currentItem.thumbnail!]
+        };
+        
+        await createMutation.mutateAsync(newItem);
+        toast({ title: "Item Created", description: "New portfolio item added." });
+      }
+      
+      setIsEditing(false);
+      setCurrentItem({});
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save the item"
+      });
     }
-    setIsEditing(false);
-    setCurrentItem({});
   };
+
+  const categoryStats = items?.reduce((acc, item) => {
+    acc[item.category] = (acc[item.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-24 px-6">
@@ -99,31 +148,50 @@ export default function AdminDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          {["All Items", "CSR Events", "Plantation", "Distillery"].map((label, i) => (
-             <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-lg">
-                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">{label}</h3>
-                <p className="text-3xl font-bold font-serif text-primary">
-                  {i === 0 ? items.length : items.filter(x => x.category === label.toLowerCase().split(' ')[0]).length}
-                </p>
-             </div>
-          ))}
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-lg" />
+            ))
+          ) : (
+            <>
+              <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">All Items</h3>
+                <p className="text-3xl font-bold font-serif text-primary">{items?.length || 0}</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">CSR Events</h3>
+                <p className="text-3xl font-bold font-serif text-primary">{categoryStats.csr || 0}</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Plantation</h3>
+                <p className="text-3xl font-bold font-serif text-primary">{categoryStats.plantation || 0}</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Distillery</h3>
+                <p className="text-3xl font-bold font-serif text-primary">{categoryStats.distillery || 0}</p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Action Bar */}
         <div className="flex justify-end mb-6">
           <Dialog open={isEditing} onOpenChange={setIsEditing}>
             <DialogTrigger asChild>
-              <Button onClick={() => setCurrentItem({ category: "csr", images: [] })} className="bg-primary text-black hover:bg-primary/90">
+              <Button 
+                onClick={() => setCurrentItem({ category: "csr", images: [] })} 
+                className="bg-primary text-black hover:bg-primary/90"
+              >
                 <Plus className="h-4 w-4 mr-2" /> Add New Item
               </Button>
             </DialogTrigger>
             <DialogContent className="bg-card border-white/10 max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{currentItem.id ? "Edit Item" : "Create New Item"}</DialogTitle>
+                <DialogTitle>{"id" in currentItem ? "Edit Item" : "Create New Item"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold">Title</label>
+                  <label className="text-sm font-bold">Title *</label>
                   <Input 
                     value={currentItem.title || ""} 
                     onChange={e => setCurrentItem({...currentItem, title: e.target.value})}
@@ -132,7 +200,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold">Category</label>
+                    <label className="text-sm font-bold">Category *</label>
                     <Select 
                       value={currentItem.category} 
                       onValueChange={(val: Category) => setCurrentItem({...currentItem, category: val})}
@@ -166,17 +234,23 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold">Thumbnail URL (Placeholder)</label>
-                  <div className="flex gap-2">
-                    <Input 
-                       value={currentItem.thumbnail || ""} 
-                       onChange={e => setCurrentItem({...currentItem, thumbnail: e.target.value})}
-                       placeholder="/assets/..."
-                    />
-                    <Button variant="outline" size="icon"><ImageIcon className="h-4 w-4" /></Button>
-                  </div>
+                  <label className="text-sm font-bold">Thumbnail URL *</label>
+                  <Input 
+                     value={currentItem.thumbnail || ""} 
+                     onChange={e => setCurrentItem({...currentItem, thumbnail: e.target.value})}
+                     placeholder="/attached_assets/..."
+                  />
                 </div>
-                <Button onClick={handleSave} className="w-full bg-primary text-black">Save Item</Button>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="w-full bg-primary text-black"
+                >
+                  {(createMutation.isPending || updateMutation.isPending) && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Save Item
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -195,41 +269,58 @@ export default function AdminDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id} className="border-white/5 hover:bg-white/5">
-                  <TableCell>
-                    <img src={item.thumbnail} alt={item.title} className="h-10 w-10 rounded object-cover" />
-                  </TableCell>
-                  <TableCell className="font-medium">{item.title}</TableCell>
-                  <TableCell>
-                    <span className="inline-block px-2 py-1 rounded-full bg-white/10 text-xs uppercase tracking-wider">
-                      {item.category}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{item.date}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => {
-                          setCurrentItem(item);
-                          setIsEditing(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4 text-primary" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-400" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-white/5">
+                    <TableCell><Skeleton className="h-10 w-10 rounded" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                items?.map((item) => (
+                  <TableRow key={item.id} className="border-white/5 hover:bg-white/5">
+                    <TableCell>
+                      <img src={item.thumbnail} alt={item.title} className="h-10 w-10 rounded object-cover" />
+                    </TableCell>
+                    <TableCell className="font-medium">{item.title}</TableCell>
+                    <TableCell>
+                      <span className="inline-block px-2 py-1 rounded-full bg-white/10 text-xs uppercase tracking-wider">
+                        {item.category}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{item.date}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => {
+                            setCurrentItem(item);
+                            setIsEditing(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 text-primary" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          {deleteMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-red-400" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

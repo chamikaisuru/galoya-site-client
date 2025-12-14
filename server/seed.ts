@@ -2,14 +2,11 @@ import { config } from "dotenv";
 import { db } from "./db";
 import { portfolioItems, products } from "@shared/schema";
 
-// Load .env file from project root
 config();
 
 async function seed() {
-  // Verify DATABASE_URL exists
   if (!process.env.DATABASE_URL) {
     console.error("❌ ERROR: DATABASE_URL is not defined!");
-    console.error("Please ensure .env file exists in project root with DATABASE_URL");
     process.exit(1);
   }
 
@@ -17,12 +14,11 @@ async function seed() {
   console.log("🌱 Seeding database...");
 
   try {
-    // Clear existing data
     console.log("Clearing existing data...");
     await db.delete(portfolioItems);
     await db.delete(products);
 
-    // Portfolio Items Data
+    // Portfolio Items Data - Fixed paths
     const portfolioData = [
       {
         slug: "school-supplies-donation-2024",
@@ -93,7 +89,7 @@ async function seed() {
       }
     ];
 
-    // Products Data
+    // Products Data - Fixed paths
     const productsData = [
       {
         slug: "galoya-original",
@@ -127,14 +123,12 @@ async function seed() {
       }
     ];
 
-    // Insert portfolio items
     console.log("Inserting portfolio items...");
     for (const item of portfolioData) {
       await db.insert(portfolioItems).values(item);
       console.log(`✓ Added: ${item.title}`);
     }
 
-    // Insert products
     console.log("Inserting products...");
     for (const product of productsData) {
       await db.insert(products).values(product);

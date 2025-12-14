@@ -5,6 +5,13 @@ import { MapPin, Phone, Mail } from "lucide-react";
 export default function Contact() {
   const { t } = useTranslation();
 
+  // Galoya Plantations, Hingurana coordinates
+  const location = {
+    lat: 7.223836,
+    lng: 81.6756929836367,
+    name: "Galoya Plantations, Hingurana, Ampara"
+  };
+
   return (
     <div className="pt-12 pb-24">
       <div className="container mx-auto px-6">
@@ -25,7 +32,11 @@ export default function Contact() {
                   </div>
                   <div>
                     <h3 className="font-bold text-lg mb-1">Address</h3>
-                    <p className="text-muted-foreground">Galoya Plantations<br/>Hingurana, Ampara<br/>Sri Lanka</p>
+                    <p className="text-muted-foreground">
+                      Galoya Plantations<br/>
+                      Hingurana, Ampara<br/>
+                      Sri Lanka
+                    </p>
                   </div>
                 </div>
                 
@@ -51,9 +62,35 @@ export default function Contact() {
               </div>
             </div>
 
-            {/* Map Placeholder */}
-            <div className="w-full h-64 bg-white/5 rounded-lg border border-white/10 flex items-center justify-center">
-              <span className="text-muted-foreground uppercase tracking-widest text-sm">Google Maps Embed Placeholder</span>
+            {/* Google Maps Embed */}
+            <div className="w-full h-96 bg-white/5 rounded-lg border border-white/10 overflow-hidden">
+              <iframe
+                title="Galoya Plantations Location"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                style={{ border: 0 }}
+                src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&q=${location.lat},${location.lng}&zoom=14`}
+                allowFullScreen
+              />
+              {/* Fallback if no API key */}
+              {!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white text-center p-8">
+                  <div>
+                    <MapPin className="h-12 w-12 mx-auto mb-4 text-primary" />
+                    <p className="font-bold mb-2">Google Maps</p>
+                    <p className="text-sm text-muted-foreground">Add VITE_GOOGLE_MAPS_API_KEY to .env</p>
+                    <a 
+                      href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-4 text-primary hover:underline"
+                    >
+                      Open in Google Maps →
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

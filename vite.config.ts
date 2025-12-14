@@ -44,8 +44,12 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
     fs: {
-      strict: true,
-      deny: ["**/.*"],
+      strict: false, // මේක false කරන්න ඕනේ attached_assets access කරන්න
+      allow: [
+        path.resolve(import.meta.dirname, "client"),
+        path.resolve(import.meta.dirname, "attached_assets"),
+      ]
     },
   },
+  publicDir: path.resolve(import.meta.dirname, "client", "public"),
 });

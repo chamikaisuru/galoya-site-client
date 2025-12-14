@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { portfolioItems, Category } from "@/data/portfolio";
+import { usePortfolio } from "@/hooks/usePortfolio";
 import PortfolioCard from "@/components/PortfolioCard";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle } from "lucide-react";
+
+type Category = "all" | "csr" | "plantation" | "distillery" | "bottle_shots";
 
 export default function Portfolio() {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<Category>("all");
+  
+  // Fetch portfolio items from database
+  const { data: portfolioItems, isLoading, error } = usePortfolio();
 
   const categories: { value: Category; label: string }[] = [
     { value: "all", label: "All Projects" },
@@ -16,9 +22,11 @@ export default function Portfolio() {
     { value: "bottle_shots", label: "Bottle Shots" },
   ];
 
-  const filteredItems = filter === "all" 
-    ? portfolioItems 
-    : portfolioItems.filter(item => item.category === filter);
+  const filteredItems = portfolioItems 
+    ? filter === "all" 
+      ? portfolioItems 
+      : portfolioItems.filter(item => item.category === filter)
+    : [];
 
   return (
     <div className="pt-12 pb-24">
@@ -48,25 +56,52 @@ export default function Portfolio() {
           </div>
         </div>
 
-        {/* Portfolio Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredItems.map((item) => (
-            <PortfolioCard
-              key={item.id}
-              slug={item.slug}
-              title={item.title}
-              category={item.category.replace("_", " ")}
-              image={item.thumbnail}
-              date={item.date}
-              description={item.description}
-            />
-          ))}
-        </div>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="space-y-4">
+                <Skeleton className="h-64 w-full rounded-lg" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* WordPress / Elementor Note (Development only) */}
-        <div className="mt-24 pt-12 border-t border-white/5 text-center text-muted-foreground/40 text-xs font-mono">
-          <p>Dev Note: Structure optimized for future WordPress + Elementor migration.</p>
-        </div>
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2">Failed to Load Portfolio</h3>
+            <p className="text-muted-foreground">Please try refreshing the page</p>
+          </div>
+        )}
+
+        {/* Portfolio Grid */}
+        {!isLoading && !error && (
+          <>
+            {filteredItems.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-xl text-muted-foreground">No items found in this category</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredItems.map((item) => (
+                  <PortfolioCard
+                    key={item.id}
+                    slug={item.slug}
+                    title={item.title}
+                    category={item.category.replace("_", " ")}
+                    image={item.thumbnail}
+                    date={item.date}
+                    description={item.description}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

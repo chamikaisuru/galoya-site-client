@@ -1,0 +1,57 @@
+You are a web developer AI. Create a complete, production-ready, responsive static website for a small sugarcane-based distillery called "galoya Arrack" according to the sitemap below.
+
+GOALS & REQUIREMENTS
+1. Technology: produce clean HTML + CSS + JavaScript files. Use Tailwind CSS (preferred) or Bootstrap if Tailwind is not available. No backend code — produce a static site that can be deployed on Replit, Netlify, Vercel, or similar.
+2. Visual style: premium / luxury look — dark color palette with gold accents, elegant typography, large bottle-focused imagery, and good spacing. Mobile-first responsive design.
+3. Multilingual: support three languages — English (default), Sinhala, Tamil. Implement a language switcher that toggles visible text (store translations as JSON objects). Provide content placeholders for Sinhala and Tamil (short sample lines for each).
+4. Accessibility & SEO: semantic HTML, ARIA where appropriate, keyboard accessible navigation, meta tags for title/description, Open Graph tags, and structured data for Organization and Product pages. Generate sitemap.xml and robots.txt.
+5. No e-commerce: there will be product detail pages but no purchase/cart. Include a clear note on each product page: “No online sales — distributed only through bars & wine shops.”
+6. Files to output: index.html, about.html, brand.html, products/index.html (product list), products/product-slug.html (example for 2–3 products), sustainability.html, gallery.html, contact.html, assets folder (placeholder images), styles.css (if using Tailwind produce generated CSS or Tailwind CDN usage), scripts.js, sitemap.xml, robots.txt, README.md with deployment instructions and instructions for replacing images/text.
+7. Contact form: static contact form that sends to an email-forwarding service (provide commented examples for Formspree or Netlify Forms). Include Google Maps embed placeholder (iframe) and a plain text address/phone/email section.
+8. Product detail pages: each product page must include: bottle image, description, ABV percentage, Ingredients (Sugarcane Arrack), Distribution Info (Bars / Wine Shops Only), a gallery carousel of bottle shots, and meta tags.
+9. Gallery: grid of images (lightbox on click).
+10. Sustainability page: explain sugarcane plantation journey, eco-friendly practices, distillation process, community impact — use realistic placeholder paragraphs and bullet lists the owner can replace.
+11. Performance: optimize images (provide instructions and small placeholder images), lazy-loading for images, and minimal JS.
+12. Sitemap structure: implement visual sitemap navigation and generate a sitemap.xml that matches the pages created.
+13. Include: favicon, structured JSON-LD (Organization + Product templates), and sample social share metadata.
+
+SITE SITEMAP (generate pages to match)
+- Home
+  - Hero Section
+  - About Distillery (short intro)
+  - Featured Products (3 sample)
+  - Sugarcane-based Production Highlight
+  - Gallery Preview
+  - Call-to-Action (Learn More / Contact)
+- About Us (company history, distillery story, team/founder, traditional methods)
+- Our Brand - galoya Arrack (brand story, unique qualities, awards/recognition)
+- Products
+  - Product List (no sales)
+  - Each Product Detail Page with Bottle Image, Description, ABV %, Ingredients, Distribution Info
+- Sustainability / Plantation Story (plantation journey, eco practices, distillation process, community impact)
+- Gallery (distillery photos, bottle shots, events)
+- Contact Us (contact form, address, phone/email, Google Map embed)
+
+DELIVERABLES (what I should receive in the Replit project)
+1. All site files and assets organized in folders.
+2. A README.md with:
+   - How to edit content and translations (where text lives).
+   - How to replace images and optimize them.
+   - How to deploy to Replit/Netlify/Vercel.
+   - How to enable contact form via Formspree or Netlify.
+3. A generated sitemap.xml and robots.txt.
+4. At least 3 example product pages (e.g., galoya-original, galoya-reserve, galoya-vintage) with full metadata.
+5. Language JSON files (en.json, si.json, ta.json) with translations for all sample text and content placeholders.
+6. Small set of placeholder images in /assets (hero, 3 product bottles, plantation photo, gallery thumbnails).
+7. A visual demo of the site navigation (header/footer + language switcher) working on mobile & desktop.
+
+COPY & TRANSLATION PLACEHOLDERS
+- Provide realistic English copy for all sections (3–6 short paragraphs where needed). For Sinhala and Tamil, provide short sample translations for headings and a line or two of body copy — label them clearly so the owner can replace with final translations.
+
+ADDITIONAL NOTES
+- Add visible note (near footer or product pages): "No online sales. galoya Arrack is distributed via bars and licensed wine shops only."
+- Make it easy to replace text and images: central content folder or JSON data file linking pages -> content.
+- Keep JS minimal: language switching, mobile menu toggle, gallery lightbox, product carousel.
+- Provide comments in code so a WordPress developer can later convert the layout into WordPress templates easily.
+
+Please generate the full project files and include a zip-ready project structure inside the Replit project. Also include a final `sitemap.xml` file content that exactly matches the created pages. Keep filenames lowercase and URL-friendly (hyphens between words). Thank you.

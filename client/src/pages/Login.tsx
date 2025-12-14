@@ -3,8 +3,9 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lock } from "lucide-react";
+import { Lock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -12,29 +13,37 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setIsLoading(true);
 
-    // Mock authentication
-    setTimeout(() => {
-      if (username === "admin" && password === "admin") {
-        localStorage.setItem("galoya_admin_auth", "true");
-        toast({
-          title: "Login Successful",
-          description: "Welcome back, Administrator.",
-        });
-        setLocation("/admin/dashboard");
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: "Invalid credentials. Try admin/admin",
-        });
-        setIsLoading(false);
-      }
-    }, 1000);
+    try {
+      const response = await apiRequest("POST", "/api/auth/login", {
+        username,
+        password,
+      });
+
+      const data = await response.json();
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${data.user.username}`,
+      });
+
+      setLocation("/admin/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials");
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: err.message || "Invalid credentials",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,26 +60,39 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
+            {error && (
+              <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 p-4 rounded border border-red-400/20">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </div>
+            )}
+            
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Username</label>
               <Input 
                 type="text" 
-                placeholder="admin" 
+                placeholder="Enter username" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="bg-black/20 border-white/10"
+                required
+                autoComplete="username"
               />
             </div>
+            
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Password</label>
               <Input 
                 type="password" 
-                placeholder="••••••" 
+                placeholder="Enter password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="bg-black/20 border-white/10"
+                required
+                autoComplete="current-password"
               />
             </div>
+            
             <Button 
               type="submit" 
               className="w-full bg-primary text-black hover:bg-primary/90 font-bold"
@@ -78,9 +100,6 @@ export default function Login() {
             >
               {isLoading ? "Authenticating..." : "Login"}
             </Button>
-            <div className="text-center">
-              <span className="text-xs text-muted-foreground">(Mock Creds: admin / admin)</span>
-            </div>
           </form>
         </CardContent>
       </Card>

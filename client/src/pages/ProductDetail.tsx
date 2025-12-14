@@ -1,17 +1,38 @@
 import { useRoute, Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { products } from "@/data/products";
+import { useProduct } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Info } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import NotFound from "./not-found";
 
 export default function ProductDetail() {
   const { t } = useTranslation();
   const [match, params] = useRoute("/products/:id");
 
+  // Fetch product from database
+  const { data: product, isLoading } = useProduct(params?.id || "");
+
   if (!match) return <NotFound />;
 
-  const product = products.find(p => p.id === params.id);
+  if (isLoading) {
+    return (
+      <div className="pt-12 pb-24">
+        <div className="container mx-auto px-6">
+          <Skeleton className="h-10 w-32 mb-12" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
+            <Skeleton className="h-[600px] lg:h-[800px] rounded-lg" />
+            <div className="space-y-8">
+              <Skeleton className="h-12 w-3/4" />
+              <Skeleton className="h-6 w-1/4" />
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-48 w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) return <NotFound />;
 

@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -34,37 +35,28 @@ export default function ContactForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setFormStatus("submitting");
     
-    // Formspree Integration
-    // Replace 'https://formspree.io/f/YOUR_ID' with your actual Formspree endpoint in production
-    // For demo purposes, we simulate a network request
-    
     try {
-      const response = await fetch('https://formspree.io/f/xbjnqyjz', { // Example ID, replace in README instructions
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(values)
+      await apiRequest("POST", "/api/contact", values);
+      
+      setFormStatus("success");
+      toast({
+        title: "Message Sent Successfully",
+        description: "Thank you for contacting us. We will get back to you shortly.",
       });
-
-      if (response.ok || true) { // Defaulting to true for demo if no real ID provided
-        setFormStatus("success");
-        toast({
-          title: "Message Sent Successfully",
-          description: "Thank you for contacting us. We will get back to you shortly.",
-        });
-        form.reset();
-      } else {
-        setFormStatus("error");
-      }
-    } catch (error) {
-       // Allow success simulation for the mockup even if fetch fails (no internet/invalid ID)
-       setFormStatus("success"); 
-       toast({
-          title: "Message Sent (Simulation)",
-          description: "This is a mockup. In production, this would go to Formspree.",
-        });
-        form.reset();
+      form.reset();
+      
+      // Reset success state after 5 seconds
+      setTimeout(() => setFormStatus("idle"), 5000);
+    } catch (error: any) {
+      setFormStatus("error");
+      toast({
+        variant: "destructive",
+        title: "Failed to Send Message",
+        description: error.message || "Please try again later.",
+      });
+      
+      // Reset error state after 3 seconds
+      setTimeout(() => setFormStatus("idle"), 3000);
     }
   }
 

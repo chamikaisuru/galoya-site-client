@@ -1,16 +1,59 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import session from "express-session";
 import { storage } from "./storage";
 import { insertPortfolioItemSchema, insertProductSchema } from "@shared/schema";
+import { login, logout, getCurrentUser, requireAuth } from "./auth";
+import { sendContactEmail } from "./email";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
+  // ============ SESSION SETUP ============
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || "galoya-arrack-secret-key-change-in-production",
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      },
+    })
+  );
+
+  // ============ AUTH ROUTES ============
+  app.post("/api/auth/login", login);
+  app.post("/api/auth/logout", logout);
+  app.get("/api/auth/me", getCurrentUser);
+
+  // ============ CONTACT FORM ROUTE ============
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, email, phone, message } = req.body;
+
+      if (!name || !email || !message) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      await sendContactEmail({ name, email, phone, message });
+
+      res.json({ 
+        message: "Message sent successfully",
+        success: true 
+      });
+    } catch (error) {
+      console.error("Contact form error:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
   // ============ PORTFOLIO ROUTES ============
   
-  // Get all portfolio items
+  // Get all portfolio items (public)
   app.get("/api/portfolio", async (req, res) => {
     try {
       const items = await storage.getAllPortfolioItems();
@@ -20,7 +63,7 @@ export async function registerRoutes(
     }
   });
 
-  // Get single portfolio item by slug
+  // Get single portfolio item by slug (public)
   app.get("/api/portfolio/:slug", async (req, res) => {
     try {
       const item = await storage.getPortfolioItemBySlug(req.params.slug);
@@ -34,7 +77,7 @@ export async function registerRoutes(
   });
 
   // Create portfolio item (Admin only)
-  app.post("/api/portfolio", async (req, res) => {
+  app.post("/api/portfolio", requireAuth, async (req, res) => {
     try {
       const validated = insertPortfolioItemSchema.parse(req.body);
       const item = await storage.createPortfolioItem(validated);
@@ -45,7 +88,7 @@ export async function registerRoutes(
   });
 
   // Update portfolio item (Admin only)
-  app.put("/api/portfolio/:id", async (req, res) => {
+  app.put("/api/portfolio/:id", requireAuth, async (req, res) => {
     try {
       const item = await storage.updatePortfolioItem(req.params.id, req.body);
       if (!item) {
@@ -58,7 +101,7 @@ export async function registerRoutes(
   });
 
   // Delete portfolio item (Admin only)
-  app.delete("/api/portfolio/:id", async (req, res) => {
+  app.delete("/api/portfolio/:id", requireAuth, async (req, res) => {
     try {
       await storage.deletePortfolioItem(req.params.id);
       res.json({ message: "Portfolio item deleted" });
@@ -69,7 +112,7 @@ export async function registerRoutes(
 
   // ============ PRODUCTS ROUTES ============
   
-  // Get all products
+  // Get all products (public)
   app.get("/api/products", async (req, res) => {
     try {
       const allProducts = await storage.getAllProducts();
@@ -79,7 +122,7 @@ export async function registerRoutes(
     }
   });
 
-  // Get single product by slug
+  // Get single product by slug (public)
   app.get("/api/products/:slug", async (req, res) => {
     try {
       const product = await storage.getProductBySlug(req.params.slug);
@@ -93,7 +136,7 @@ export async function registerRoutes(
   });
 
   // Create product (Admin only)
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", requireAuth, async (req, res) => {
     try {
       const validated = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(validated);
@@ -104,7 +147,7 @@ export async function registerRoutes(
   });
 
   // Update product (Admin only)
-  app.put("/api/products/:id", async (req, res) => {
+  app.put("/api/products/:id", requireAuth, async (req, res) => {
     try {
       const product = await storage.updateProduct(req.params.id, req.body);
       if (!product) {
@@ -117,7 +160,7 @@ export async function registerRoutes(
   });
 
   // Delete product (Admin only)
-  app.delete("/api/products/:id", async (req, res) => {
+  app.delete("/api/products/:id", requireAuth, async (req, res) => {
     try {
       await storage.deleteProduct(req.params.id);
       res.json({ message: "Product deleted" });

@@ -1,9 +1,14 @@
 import { useTranslation } from "react-i18next";
+import { useProducts } from "@/hooks/useProducts";
 import ProductCard from "@/components/ProductCard";
-import { products } from "@/data/products";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle } from "lucide-react";
 
 export default function Products() {
   const { t } = useTranslation();
+  
+  // Fetch products from database
+  const { data: products, isLoading, error } = useProducts();
 
   return (
     <div className="pt-12 pb-24">
@@ -16,18 +21,49 @@ export default function Products() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {products.map((product) => (
-            <ProductCard 
-              key={product.id}
-              id={product.id}
-              name={product.name}
-              image={product.image}
-              abv={product.abv}
-              description={product.description}
-            />
-          ))}
-        </div>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="space-y-4">
+                <Skeleton className="h-96 w-full rounded-lg" />
+                <Skeleton className="h-6 w-3/4 mx-auto" />
+                <Skeleton className="h-4 w-1/2 mx-auto" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2">Failed to Load Products</h3>
+            <p className="text-muted-foreground">Please try refreshing the page</p>
+          </div>
+        )}
+
+        {/* Products Grid */}
+        {!isLoading && !error && products && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {products.map((product) => (
+              <ProductCard 
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                image={product.image}
+                abv={product.abv}
+                description={product.description}
+              />
+            ))}
+          </div>
+        )}
+
+        {!isLoading && !error && (!products || products.length === 0) && (
+          <div className="text-center py-12">
+            <p className="text-xl text-muted-foreground">No products available at the moment</p>
+          </div>
+        )}
       </div>
     </div>
   );
