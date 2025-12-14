@@ -1,108 +1,351 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, Link } from "wouter";
+import { usePortfolio, useCreatePortfolio, useUpdatePortfolio, useDeletePortfolio } from "@/hooks/usePortfolio";
+import type { PortfolioItem, InsertPortfolioItem } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lock, AlertCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Plus, Trash2, Edit, LogOut, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
 
-export default function Login() {
+type Category = "csr" | "plantation" | "distillery" | "bottle_shots";
+
+export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  
+  // Fetch data from database
+  const { data: items, isLoading } = usePortfolio();
+  const createMutation = useCreatePortfolio();
+  const updateMutation = useUpdatePortfolio();
+  const deleteMutation = useDeletePortfolio();
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentItem, setCurrentItem] = useState<Partial<InsertPortfolioItem>>({});
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+  // Check auth - Verify with server
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { 
+          credentials: "include" 
+        });
+        
+        if (!response.ok) {
+          setLocation("/admin/login");
+        }
+      } catch (error) {
+        setLocation("/admin/login");
+      }
+    };
+    
+    checkAuth();
+  }, [setLocation]);
 
+  const handleLogout = async () => {
     try {
-      const response = await apiRequest("POST", "/api/auth/login", {
-        username,
-        password,
-      });
-
-      const data = await response.json();
-
+      await apiRequest("POST", "/api/auth/logout", {});
       toast({
-        title: "Login Successful",
-        description: `Welcome back, ${data.user.username}`,
+        title: "Logged Out",
+        description: "You have been logged out successfully."
       });
-
-      setLocation("/admin/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Invalid credentials");
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: err.message || "Invalid credentials",
-      });
-    } finally {
-      setIsLoading(false);
+      setLocation("/admin/login");
+    } catch (error) {
+      // Even if logout fails, redirect to login
+      setLocation("/admin/login");
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this item?")) {
+      try {
+        await deleteMutation.mutateAsync(id);
+        toast({ 
+          title: "Item Deleted", 
+          description: "Portfolio item removed successfully." 
+        });
+      } catch (error) {
+        toast({ 
+          variant: "destructive",
+          title: "Delete Failed", 
+          description: "Could not delete the item." 
+        });
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      if (!currentItem.title || !currentItem.category || !currentItem.thumbnail) {
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: "Please fill all required fields"
+        });
+        return;
+      }
+
+      if ("id" in currentItem && currentItem.id) {
+        // Update existing
+        await updateMutation.mutateAsync({ 
+          id: currentItem.id, 
+          data: currentItem as Partial<InsertPortfolioItem>
+        });
+        toast({ title: "Item Updated", description: "Changes saved successfully." });
+      } else {
+        // Create new
+        const newItem: InsertPortfolioItem = {
+          slug: currentItem.title?.toLowerCase().replace(/\s+/g, '-') || "new-item",
+          title: currentItem.title!,
+          category: currentItem.category!,
+          thumbnail: currentItem.thumbnail!,
+          date: currentItem.date || new Date().toLocaleDateString(),
+          description: currentItem.description || "",
+          images: currentItem.images || [currentItem.thumbnail!]
+        };
+        
+        await createMutation.mutateAsync(newItem);
+        toast({ title: "Item Created", description: "New portfolio item added." });
+      }
+      
+      setIsEditing(false);
+      setCurrentItem({});
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save the item"
+      });
+    }
+  };
+
+  const categoryStats = items?.reduce((acc, item) => {
+    acc[item.category] = (acc[item.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>) || {};
+
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-6">
-      <Card className="w-full max-w-md bg-white/5 border-white/10">
-        <CardHeader className="space-y-4 text-center">
-          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
-            <Lock className="h-6 w-6" />
+    <div className="min-h-screen bg-background pt-20 pb-24 px-6">
+      <div className="container mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-12">
+          <div>
+            <h1 className="text-3xl font-serif font-bold text-white mb-2">Admin Dashboard</h1>
+            <p className="text-muted-foreground">Manage your portfolio content</p>
           </div>
-          <div className="space-y-2">
-            <CardTitle className="text-2xl font-serif font-bold text-white">Admin Access</CardTitle>
-            <CardDescription>Enter your credentials to access the dashboard</CardDescription>
+          <div className="flex gap-4">
+             <Link href="/">
+                <Button variant="outline" className="border-white/10">View Site</Button>
+             </Link>
+             <Button variant="destructive" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" /> Logout
+             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
-              <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 p-4 rounded border border-red-400/20">
-                <AlertCircle className="h-4 w-4" />
-                {error}
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-lg" />
+            ))
+          ) : (
+            <>
+              <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">All Items</h3>
+                <p className="text-3xl font-bold font-serif text-primary">{items?.length || 0}</p>
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Username</label>
-              <Input 
-                type="text" 
-                placeholder="Enter username" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="bg-black/20 border-white/10"
-                required
-                autoComplete="username"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Password</label>
-              <Input 
-                type="password" 
-                placeholder="Enter password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-black/20 border-white/10"
-                required
-                autoComplete="current-password"
-              />
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-primary text-black hover:bg-primary/90 font-bold"
-              disabled={isLoading}
-            >
-              {isLoading ? "Authenticating..." : "Login"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">CSR Events</h3>
+                <p className="text-3xl font-bold font-serif text-primary">{categoryStats.csr || 0}</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Plantation</h3>
+                <p className="text-3xl font-bold font-serif text-primary">{categoryStats.plantation || 0}</p>
+              </div>
+              <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Distillery</h3>
+                <p className="text-3xl font-bold font-serif text-primary">{categoryStats.distillery || 0}</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Action Bar */}
+        <div className="flex justify-end mb-6">
+          <Dialog open={isEditing} onOpenChange={setIsEditing}>
+            <DialogTrigger asChild>
+              <Button 
+                onClick={() => setCurrentItem({ category: "csr", images: [] })} 
+                className="bg-primary text-black hover:bg-primary/90"
+              >
+                <Plus className="h-4 w-4 mr-2" /> Add New Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-card border-white/10 max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{"id" in currentItem ? "Edit Item" : "Create New Item"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Title *</label>
+                  <Input 
+                    value={currentItem.title || ""} 
+                    onChange={e => setCurrentItem({...currentItem, title: e.target.value})}
+                    placeholder="Event Title"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold">Category *</label>
+                    <Select 
+                      value={currentItem.category} 
+                      onValueChange={(val: Category) => setCurrentItem({...currentItem, category: val})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="csr">CSR</SelectItem>
+                        <SelectItem value="plantation">Plantation</SelectItem>
+                        <SelectItem value="distillery">Distillery</SelectItem>
+                        <SelectItem value="bottle_shots">Bottle Shots</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold">Date</label>
+                    <Input 
+                      value={currentItem.date || ""} 
+                      onChange={e => setCurrentItem({...currentItem, date: e.target.value})}
+                      placeholder="Month Year"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Description</label>
+                  <Textarea 
+                    value={currentItem.description || ""} 
+                    onChange={e => setCurrentItem({...currentItem, description: e.target.value})}
+                    placeholder="Short description..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Thumbnail URL *</label>
+                  <Input 
+                     value={currentItem.thumbnail || ""} 
+                     onChange={e => setCurrentItem({...currentItem, thumbnail: e.target.value})}
+                     placeholder="/attached_assets/..."
+                  />
+                </div>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="w-full bg-primary text-black"
+                >
+                  {(createMutation.isPending || updateMutation.isPending) && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Save Item
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Data Table */}
+        <div className="rounded-md border border-white/10 bg-white/5 overflow-hidden">
+          <Table>
+            <TableHeader className="bg-black/20">
+              <TableRow className="border-white/10 hover:bg-transparent">
+                <TableHead className="text-white">Thumbnail</TableHead>
+                <TableHead className="text-white">Title</TableHead>
+                <TableHead className="text-white">Category</TableHead>
+                <TableHead className="text-white">Date</TableHead>
+                <TableHead className="text-right text-white">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-white/5">
+                    <TableCell><Skeleton className="h-10 w-10 rounded" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                items?.map((item) => (
+                  <TableRow key={item.id} className="border-white/5 hover:bg-white/5">
+                    <TableCell>
+                      <img src={item.thumbnail} alt={item.title} className="h-10 w-10 rounded object-cover" />
+                    </TableCell>
+                    <TableCell className="font-medium">{item.title}</TableCell>
+                    <TableCell>
+                      <span className="inline-block px-2 py-1 rounded-full bg-white/10 text-xs uppercase tracking-wider">
+                        {item.category}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{item.date}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => {
+                            setCurrentItem(item);
+                            setIsEditing(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 text-primary" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          {deleteMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-red-400" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     </div>
   );
 }
