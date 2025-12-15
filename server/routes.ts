@@ -6,25 +6,55 @@ import { insertPortfolioItemSchema, insertProductSchema } from "@shared/schema";
 import { login, logout, getCurrentUser, requireAuth } from "./auth";
 import { sendContactEmail } from "./email";
 
+// Extend session data type
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string;
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
   // ============ SESSION SETUP ============
+  // CRITICAL: Session must be configured before any routes
+  const sessionSecret = process.env.SESSION_SECRET || "galoya-arrack-secret-key-change-in-production-" + Date.now();
+  
+  console.log("🔐 Configuring session middleware...");
+  
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "galoya-arrack-secret-key-change-in-production",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
+      name: 'galoya.sid', // Custom session cookie name
       cookie: {
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production", // true in production with HTTPS
         httpOnly: true,
-        sameSite: "lax", 
+        sameSite: "lax",
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        path: '/', // Ensure cookie is available for all paths
       },
+      rolling: true, // Reset expiry on each request
     })
   );
+
+  console.log("✅ Session middleware configured");
+
+  // Add session debugging middleware in development
+  if (process.env.NODE_ENV === "development") {
+    app.use((req, res, next) => {
+      console.log("📋 Session Debug:", {
+        sessionID: req.sessionID,
+        userId: req.session?.userId,
+        cookie: req.session?.cookie,
+        path: req.path
+      });
+      next();
+    });
+  }
 
   // ============ AUTH ROUTES ============
   app.post("/api/auth/login", login);
@@ -60,6 +90,7 @@ export async function registerRoutes(
       const items = await storage.getAllPortfolioItems();
       res.json(items);
     } catch (error) {
+      console.error("Get portfolio error:", error);
       res.status(500).json({ message: "Failed to fetch portfolio items" });
     }
   });
@@ -73,6 +104,7 @@ export async function registerRoutes(
       }
       res.json(item);
     } catch (error) {
+      console.error("Get portfolio item error:", error);
       res.status(500).json({ message: "Failed to fetch portfolio item" });
     }
   });
@@ -84,6 +116,7 @@ export async function registerRoutes(
       const item = await storage.createPortfolioItem(validated);
       res.status(201).json(item);
     } catch (error) {
+      console.error("Create portfolio error:", error);
       res.status(400).json({ message: "Invalid portfolio data", error });
     }
   });
@@ -97,6 +130,7 @@ export async function registerRoutes(
       }
       res.json(item);
     } catch (error) {
+      console.error("Update portfolio error:", error);
       res.status(400).json({ message: "Failed to update portfolio item" });
     }
   });
@@ -107,6 +141,7 @@ export async function registerRoutes(
       await storage.deletePortfolioItem(req.params.id);
       res.json({ message: "Portfolio item deleted" });
     } catch (error) {
+      console.error("Delete portfolio error:", error);
       res.status(500).json({ message: "Failed to delete portfolio item" });
     }
   });
@@ -119,6 +154,7 @@ export async function registerRoutes(
       const allProducts = await storage.getAllProducts();
       res.json(allProducts);
     } catch (error) {
+      console.error("Get products error:", error);
       res.status(500).json({ message: "Failed to fetch products" });
     }
   });
@@ -132,6 +168,7 @@ export async function registerRoutes(
       }
       res.json(product);
     } catch (error) {
+      console.error("Get product error:", error);
       res.status(500).json({ message: "Failed to fetch product" });
     }
   });
@@ -143,6 +180,7 @@ export async function registerRoutes(
       const product = await storage.createProduct(validated);
       res.status(201).json(product);
     } catch (error) {
+      console.error("Create product error:", error);
       res.status(400).json({ message: "Invalid product data", error });
     }
   });
@@ -156,6 +194,7 @@ export async function registerRoutes(
       }
       res.json(product);
     } catch (error) {
+      console.error("Update product error:", error);
       res.status(400).json({ message: "Failed to update product" });
     }
   });
@@ -166,6 +205,7 @@ export async function registerRoutes(
       await storage.deleteProduct(req.params.id);
       res.json({ message: "Product deleted" });
     } catch (error) {
+      console.error("Delete product error:", error);
       res.status(500).json({ message: "Failed to delete product" });
     }
   });
