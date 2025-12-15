@@ -8,10 +8,10 @@ import NotFound from "./not-found";
 
 export default function ProductDetail() {
   const { t } = useTranslation();
-  const [match, params] = useRoute("/products/:id");
+  const [match, params] = useRoute("/products/:slug");
 
-  // Fetch product from database
-  const { data: product, isLoading } = useProduct(params?.id || "");
+  // Fetch product from database using slug
+  const { data: product, isLoading } = useProduct(params?.slug || "");
 
   if (!match) return <NotFound />;
 
