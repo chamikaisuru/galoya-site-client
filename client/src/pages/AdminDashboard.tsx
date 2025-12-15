@@ -27,11 +27,21 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Plus, Trash2, Edit, LogOut, Loader2 } from "lucide-react";
+import { Plus, Trash2, Edit, LogOut, Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type Category = "csr" | "plantation" | "distillery" | "bottle_shots";
+
+interface PortfolioFormData {
+  id?: string;
+  title: string;
+  category: Category;
+  thumbnail: string;
+  date: string;
+  description: string;
+  images: string[];
+}
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
@@ -40,39 +50,39 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Fetch data from database
-  const { data: items, isLoading } = usePortfolio();
+  const { data: items, isLoading, refetch } = usePortfolio();
   const createMutation = useCreatePortfolio();
   const updateMutation = useUpdatePortfolio();
   const deleteMutation = useDeletePortfolio();
   
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentItem, setCurrentItem] = useState<Partial<InsertPortfolioItem>>({});
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<PortfolioFormData>({
+    title: "",
+    category: "csr",
+    thumbnail: "",
+    date: "",
+    description: "",
+    images: []
+  });
+  const [imageInput, setImageInput] = useState("");
 
   // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("🔐 Checking authentication...");
-        
         const response = await fetch("/api/auth/me", { 
           credentials: "include" 
         });
         
-        console.log("📥 Auth check response:", response.status);
-        
         if (!response.ok) {
-          console.log("❌ Not authenticated, redirecting to login...");
           setIsAuthenticated(false);
           setLocation("/admin/login");
           return;
         }
         
-        const userData = await response.json();
-        console.log("✅ Authenticated as:", userData);
         setIsAuthenticated(true);
-        
       } catch (error) {
-        console.error("❌ Auth check error:", error);
+        console.error("Auth check error:", error);
         setIsAuthenticated(false);
         setLocation("/admin/login");
       } finally {
@@ -85,8 +95,6 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
-      console.log("🚪 Logging out...");
-      
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include"
@@ -97,36 +105,65 @@ export default function AdminDashboard() {
         description: "You have been logged out successfully."
       });
       
-      console.log("✅ Logout successful, redirecting...");
       window.location.href = "/admin/login";
-      
     } catch (error) {
-      console.error("❌ Logout error:", error);
       window.location.href = "/admin/login";
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this item?")) {
-      try {
-        await deleteMutation.mutateAsync(id);
-        toast({ 
-          title: "Item Deleted", 
-          description: "Portfolio item removed successfully." 
-        });
-      } catch (error) {
-        toast({ 
-          variant: "destructive",
-          title: "Delete Failed", 
-          description: "Could not delete the item." 
-        });
-      }
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      category: "csr",
+      thumbnail: "",
+      date: "",
+      description: "",
+      images: []
+    });
+    setImageInput("");
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setIsDialogOpen(true);
+  };
+
+  const openEditDialog = (item: any) => {
+    setFormData({
+      id: item.id,
+      title: item.title,
+      category: item.category,
+      thumbnail: item.thumbnail,
+      date: item.date,
+      description: item.description,
+      images: item.images || []
+    });
+    setImageInput(item.images?.join("\n") || "");
+    setIsDialogOpen(true);
+  };
+
+  const handleAddImage = () => {
+    if (imageInput.trim()) {
+      const newImages = imageInput.split("\n").map(img => img.trim()).filter(Boolean);
+      setFormData(prev => ({
+        ...prev,
+        images: [...new Set([...prev.images, ...newImages])]
+      }));
+      setImageInput("");
     }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
   };
 
   const handleSave = async () => {
     try {
-      if (!currentItem.title || !currentItem.category || !currentItem.thumbnail) {
+      // Validation
+      if (!formData.title || !formData.category || !formData.thumbnail) {
         toast({
           variant: "destructive",
           title: "Validation Error",
@@ -135,39 +172,83 @@ export default function AdminDashboard() {
         return;
       }
 
-      if ("id" in currentItem && currentItem.id) {
-        await updateMutation.mutateAsync({ 
-          id: currentItem.id, 
-          data: currentItem as Partial<InsertPortfolioItem>
+      if (formData.images.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: "Please add at least one image"
         });
-        toast({ title: "Item Updated", description: "Changes saved successfully." });
+        return;
+      }
+
+      if (formData.id) {
+        // Update existing
+        await updateMutation.mutateAsync({ 
+          id: formData.id, 
+          data: {
+            slug: formData.title.toLowerCase().replace(/\s+/g, '-'),
+            title: formData.title,
+            category: formData.category,
+            thumbnail: formData.thumbnail,
+            date: formData.date || new Date().toLocaleDateString(),
+            description: formData.description,
+            images: formData.images
+          }
+        });
+        toast({ 
+          title: "Success", 
+          description: "Portfolio item updated successfully." 
+        });
       } else {
-        const newItem: InsertPortfolioItem = {
-          slug: currentItem.title?.toLowerCase().replace(/\s+/g, '-') || "new-item",
-          title: currentItem.title!,
-          category: currentItem.category!,
-          thumbnail: currentItem.thumbnail!,
-          date: currentItem.date || new Date().toLocaleDateString(),
-          description: currentItem.description || "",
-          images: currentItem.images || [currentItem.thumbnail!]
-        };
-        
-        await createMutation.mutateAsync(newItem);
-        toast({ title: "Item Created", description: "New portfolio item added." });
+        // Create new
+        await createMutation.mutateAsync({
+          slug: formData.title.toLowerCase().replace(/\s+/g, '-'),
+          title: formData.title,
+          category: formData.category,
+          thumbnail: formData.thumbnail,
+          date: formData.date || new Date().toLocaleDateString(),
+          description: formData.description,
+          images: formData.images
+        });
+        toast({ 
+          title: "Success", 
+          description: "Portfolio item created successfully." 
+        });
       }
       
-      setIsEditing(false);
-      setCurrentItem({});
-    } catch (error) {
+      setIsDialogOpen(false);
+      resetForm();
+      refetch();
+    } catch (error: any) {
+      console.error("Save error:", error);
       toast({
         variant: "destructive",
-        title: "Save Failed",
-        description: "Could not save the item"
+        title: "Error",
+        description: error.message || "Failed to save portfolio item"
       });
     }
   };
 
-  // Show loading while checking auth
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast({ 
+        title: "Success", 
+        description: "Portfolio item deleted successfully." 
+      });
+      refetch();
+    } catch (error) {
+      toast({ 
+        variant: "destructive",
+        title: "Error", 
+        description: "Failed to delete the item." 
+      });
+    }
+  };
+
+  // Loading state
   if (isAuthChecking) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -179,10 +260,7 @@ export default function AdminDashboard() {
     );
   }
 
-  // Don't render dashboard if not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   const categoryStats = items?.reduce((acc, item) => {
     acc[item.category] = (acc[item.category] || 0) + 1;
@@ -199,12 +277,12 @@ export default function AdminDashboard() {
             <p className="text-muted-foreground">Manage your portfolio content</p>
           </div>
           <div className="flex gap-4">
-             <Link href="/">
-                <Button variant="outline" className="border-white/10">View Site</Button>
-             </Link>
-             <Button variant="destructive" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" /> Logout
-             </Button>
+            <Link href="/">
+              <Button variant="outline" className="border-white/10">View Site</Button>
+            </Link>
+            <Button variant="destructive" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" /> Logout
+            </Button>
           </div>
         </div>
 
@@ -217,7 +295,7 @@ export default function AdminDashboard() {
           ) : (
             <>
               <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
-                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">All Items</h3>
+                <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Total Items</h3>
                 <p className="text-3xl font-bold font-serif text-primary">{items?.length || 0}</p>
               </div>
               <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
@@ -238,84 +316,12 @@ export default function AdminDashboard() {
 
         {/* Action Bar */}
         <div className="flex justify-end mb-6">
-          <Dialog open={isEditing} onOpenChange={setIsEditing}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={() => setCurrentItem({ category: "csr", images: [] })} 
-                className="bg-primary text-black hover:bg-primary/90"
-              >
-                <Plus className="h-4 w-4 mr-2" /> Add New Item
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card border-white/10 max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{"id" in currentItem ? "Edit Item" : "Create New Item"}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold">Title *</label>
-                  <Input 
-                    value={currentItem.title || ""} 
-                    onChange={e => setCurrentItem({...currentItem, title: e.target.value})}
-                    placeholder="Event Title"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold">Category *</label>
-                    <Select 
-                      value={currentItem.category} 
-                      onValueChange={(val: Category) => setCurrentItem({...currentItem, category: val})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="csr">CSR</SelectItem>
-                        <SelectItem value="plantation">Plantation</SelectItem>
-                        <SelectItem value="distillery">Distillery</SelectItem>
-                        <SelectItem value="bottle_shots">Bottle Shots</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold">Date</label>
-                    <Input 
-                      value={currentItem.date || ""} 
-                      onChange={e => setCurrentItem({...currentItem, date: e.target.value})}
-                      placeholder="Month Year"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold">Description</label>
-                  <Textarea 
-                    value={currentItem.description || ""} 
-                    onChange={e => setCurrentItem({...currentItem, description: e.target.value})}
-                    placeholder="Short description..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold">Thumbnail URL *</label>
-                  <Input 
-                     value={currentItem.thumbnail || ""} 
-                     onChange={e => setCurrentItem({...currentItem, thumbnail: e.target.value})}
-                     placeholder="/attached_assets/..."
-                  />
-                </div>
-                <Button 
-                  onClick={handleSave} 
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="w-full bg-primary text-black"
-                >
-                  {(createMutation.isPending || updateMutation.isPending) && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Save Item
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button 
+            onClick={openCreateDialog}
+            className="bg-primary text-black hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add New Item
+          </Button>
         </div>
 
         {/* Data Table */}
@@ -359,10 +365,7 @@ export default function AdminDashboard() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={() => {
-                            setCurrentItem(item);
-                            setIsEditing(true);
-                          }}
+                          onClick={() => openEditDialog(item)}
                         >
                           <Edit className="h-4 w-4 text-primary" />
                         </Button>
@@ -386,6 +389,138 @@ export default function AdminDashboard() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Edit/Create Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="bg-card border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{formData.id ? "Edit Portfolio Item" : "Create New Portfolio Item"}</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Title */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Title *</label>
+                <Input 
+                  value={formData.title} 
+                  onChange={e => setFormData(prev => ({...prev, title: e.target.value}))}
+                  placeholder="Event Title"
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+
+              {/* Category & Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Category *</label>
+                  <Select 
+                    value={formData.category} 
+                    onValueChange={(val: Category) => setFormData(prev => ({...prev, category: val}))}
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10">
+                      <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="csr">CSR</SelectItem>
+                      <SelectItem value="plantation">Plantation</SelectItem>
+                      <SelectItem value="distillery">Distillery</SelectItem>
+                      <SelectItem value="bottle_shots">Bottle Shots</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Date</label>
+                  <Input 
+                    value={formData.date} 
+                    onChange={e => setFormData(prev => ({...prev, date: e.target.value}))}
+                    placeholder="Month Year"
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Description</label>
+                <Textarea 
+                  value={formData.description} 
+                  onChange={e => setFormData(prev => ({...prev, description: e.target.value}))}
+                  placeholder="Short description..."
+                  className="bg-white/5 border-white/10"
+                  rows={3}
+                />
+              </div>
+
+              {/* Thumbnail URL */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Thumbnail URL *</label>
+                <Input 
+                  value={formData.thumbnail} 
+                  onChange={e => setFormData(prev => ({...prev, thumbnail: e.target.value}))}
+                  placeholder="/attached_assets/..."
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+
+              {/* Images */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Gallery Images * (one per line)</label>
+                <Textarea 
+                  value={imageInput} 
+                  onChange={e => setImageInput(e.target.value)}
+                  placeholder="/attached_assets/image1.png&#10;/attached_assets/image2.png"
+                  className="bg-white/5 border-white/10"
+                  rows={4}
+                />
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddImage}
+                  className="w-full"
+                  size="sm"
+                >
+                  Add Images to Gallery
+                </Button>
+              </div>
+
+              {/* Image List */}
+              {formData.images.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Gallery ({formData.images.length} images)</label>
+                  <div className="border border-white/10 rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto bg-white/5">
+                    {formData.images.map((img, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-2 bg-black/20 p-2 rounded">
+                        <span className="text-xs text-muted-foreground truncate flex-1">{img}</span>
+                        <Button 
+                          type="button"
+                          variant="ghost" 
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleRemoveImage(idx)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Save Button */}
+              <Button 
+                onClick={handleSave} 
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="w-full bg-primary text-black hover:bg-primary/90"
+              >
+                {(createMutation.isPending || updateMutation.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {formData.id ? "Update Item" : "Create Item"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

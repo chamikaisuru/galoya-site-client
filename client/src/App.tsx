@@ -16,7 +16,8 @@ import CSREvent from "@/pages/CSREvent";
 import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
 import AdminDashboard from "@/pages/AdminDashboard";
-import "./lib/i18n"; // Import i18n config
+import AgeVerification from "@/components/AgeVerification";
+import "./lib/i18n";
 
 function Router() {
   return (
@@ -44,6 +45,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <AgeVerification />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>
