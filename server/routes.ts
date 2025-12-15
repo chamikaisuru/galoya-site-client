@@ -18,43 +18,45 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // ============ SESSION SETUP ============
-  // CRITICAL: Session must be configured before any routes
+  // ============ SESSION SETUP - CRITICAL ============
   const sessionSecret = process.env.SESSION_SECRET || "galoya-arrack-secret-key-change-in-production-" + Date.now();
   
   console.log("🔐 Configuring session middleware...");
+  console.log("   NODE_ENV:", process.env.NODE_ENV);
+  console.log("   Session Secret:", sessionSecret.substring(0, 10) + "...");
+  
+  app.set('trust proxy', 1); // Trust first proxy - IMPORTANT for Replit/Neon
   
   app.use(
     session({
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
-      name: 'galoya.sid', // Custom session cookie name
+      name: 'galoya.sid',
       cookie: {
-        secure: process.env.NODE_ENV === "production", // true in production with HTTPS
+        secure: false, // Set to false for development/Replit
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: 'lax',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-        path: '/', // Ensure cookie is available for all paths
+        path: '/',
       },
-      rolling: true, // Reset expiry on each request
+      rolling: true,
     })
   );
 
   console.log("✅ Session middleware configured");
 
-  // Add session debugging middleware in development
-  if (process.env.NODE_ENV === "development") {
-    app.use((req, res, next) => {
-      console.log("📋 Session Debug:", {
-        sessionID: req.sessionID,
-        userId: req.session?.userId,
-        cookie: req.session?.cookie,
-        path: req.path
-      });
-      next();
+  // Session debugging middleware
+  app.use((req, res, next) => {
+    console.log("📋 Session Debug:", {
+      method: req.method,
+      path: req.path,
+      sessionID: req.sessionID,
+      userId: req.session?.userId,
+      cookie: req.session?.cookie
     });
-  }
+    next();
+  });
 
   // ============ AUTH ROUTES ============
   app.post("/api/auth/login", login);

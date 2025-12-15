@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { usePortfolio, useCreatePortfolio, useUpdatePortfolio, useDeletePortfolio } from "@/hooks/usePortfolio";
-import type { PortfolioItem, InsertPortfolioItem } from "@shared/schema";
+import type { InsertPortfolioItem } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,7 +27,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Plus, Trash2, Edit, LogOut, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Plus, Trash2, Edit, LogOut, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -36,6 +36,8 @@ type Category = "csr" | "plantation" | "distillery" | "bottle_shots";
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Fetch data from database
   const { data: items, isLoading } = usePortfolio();
@@ -46,17 +48,62 @@ export default function AdminDashboard() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentItem, setCurrentItem] = useState<Partial<InsertPortfolioItem>>({});
 
-  // Check auth
+  // Check authentication
   useEffect(() => {
-    const isAuth = localStorage.getItem("galoya_admin_auth");
-    if (!isAuth) {
-      setLocation("/admin/login");
-    }
+    const checkAuth = async () => {
+      try {
+        console.log("🔐 Checking authentication...");
+        
+        const response = await fetch("/api/auth/me", { 
+          credentials: "include" 
+        });
+        
+        console.log("📥 Auth check response:", response.status);
+        
+        if (!response.ok) {
+          console.log("❌ Not authenticated, redirecting to login...");
+          setIsAuthenticated(false);
+          setLocation("/admin/login");
+          return;
+        }
+        
+        const userData = await response.json();
+        console.log("✅ Authenticated as:", userData);
+        setIsAuthenticated(true);
+        
+      } catch (error) {
+        console.error("❌ Auth check error:", error);
+        setIsAuthenticated(false);
+        setLocation("/admin/login");
+      } finally {
+        setIsAuthChecking(false);
+      }
+    };
+    
+    checkAuth();
   }, [setLocation]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("galoya_admin_auth");
-    setLocation("/admin/login");
+  const handleLogout = async () => {
+    try {
+      console.log("🚪 Logging out...");
+      
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include"
+      });
+      
+      toast({
+        title: "Logged Out",
+        description: "You have been logged out successfully."
+      });
+      
+      console.log("✅ Logout successful, redirecting...");
+      window.location.href = "/admin/login";
+      
+    } catch (error) {
+      console.error("❌ Logout error:", error);
+      window.location.href = "/admin/login";
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -89,14 +136,12 @@ export default function AdminDashboard() {
       }
 
       if ("id" in currentItem && currentItem.id) {
-        // Update existing
         await updateMutation.mutateAsync({ 
           id: currentItem.id, 
           data: currentItem as Partial<InsertPortfolioItem>
         });
         toast({ title: "Item Updated", description: "Changes saved successfully." });
       } else {
-        // Create new
         const newItem: InsertPortfolioItem = {
           slug: currentItem.title?.toLowerCase().replace(/\s+/g, '-') || "new-item",
           title: currentItem.title!,
@@ -121,6 +166,23 @@ export default function AdminDashboard() {
       });
     }
   };
+
+  // Show loading while checking auth
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const categoryStats = items?.reduce((acc, item) => {
     acc[item.category] = (acc[item.category] || 0) + 1;
