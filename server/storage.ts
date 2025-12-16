@@ -1,6 +1,7 @@
 import { db } from "./db";
-import { users, portfolioItems, products, type User, type InsertUser, type PortfolioItem, type InsertPortfolioItem, type Product, type InsertProduct } from "@shared/schema";
+import { users, portfolioItems, products, awards,  type User, type InsertUser, type PortfolioItem, type InsertPortfolioItem, type Product, type InsertProduct, type Award, type InsertAward } from "@shared/schema";
 import { eq } from "drizzle-orm";
+
 
 export interface IStorage {
   // Users
@@ -21,6 +22,13 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<void>;
+
+  // Awards
+  getAllAwards(): Promise<Award[]>;
+  getAward(id: string): Promise<Award | undefined>;
+  createAward(award: InsertAward): Promise<Award>;
+  updateAward(id: string, award: Partial<InsertAward>): Promise<Award | undefined>;
+  deleteAward(id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -94,6 +102,34 @@ export class DbStorage implements IStorage {
 
   async deleteProduct(id: string): Promise<void> {
     await db.delete(products).where(eq(products.id, id));
+  }
+
+  // Awards
+  async getAllAwards(): Promise<Award[]> {
+    return await db.select().from(awards).orderBy(awards.displayOrder);
+  }
+
+  async getAward(id: string): Promise<Award | undefined> {
+    const result = await db.select().from(awards).where(eq(awards.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createAward(award: InsertAward): Promise<Award> {
+    const result = await db.insert(awards).values(award).returning();
+    return result[0];
+  }
+
+  async updateAward(id: string, award: Partial<InsertAward>): Promise<Award | undefined> {
+    const result = await db
+      .update(awards)
+      .set({ ...award, updatedAt: new Date() })
+      .where(eq(awards.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteAward(id: string): Promise<void> {
+    await db.delete(awards).where(eq(awards.id, id));
   }
 }
 

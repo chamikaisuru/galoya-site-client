@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
 interface ProductCardProps {
-  id: string;
+  id: string; // This is actually the slug
   name: string;
   image: string;
   abv: string;

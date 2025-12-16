@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
-import { insertPortfolioItemSchema, insertProductSchema } from "@shared/schema";
+import { insertPortfolioItemSchema, insertProductSchema, insertAwardSchema } from "@shared/schema";
 import { login, logout, getCurrentUser, requireAuth } from "./auth";
 import { sendContactEmail } from "./email";
 
@@ -18,14 +18,12 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // ============ SESSION SETUP - CRITICAL ============
+  // ============ SESSION SETUP ============
   const sessionSecret = process.env.SESSION_SECRET || "galoya-arrack-secret-key-change-in-production-" + Date.now();
   
   console.log("🔐 Configuring session middleware...");
-  console.log("   NODE_ENV:", process.env.NODE_ENV);
-  console.log("   Session Secret:", sessionSecret.substring(0, 10) + "...");
   
-  app.set('trust proxy', 1); // Trust first proxy - IMPORTANT for Replit/Neon
+  app.set('trust proxy', 1);
   
   app.use(
     session({
@@ -34,10 +32,10 @@ export async function registerRoutes(
       saveUninitialized: false,
       name: 'galoya.sid',
       cookie: {
-        secure: false, // Set to false for development/Replit
+        secure: false,
         httpOnly: true,
         sameSite: 'lax',
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        maxAge: 1000 * 60 * 60 * 24 * 7,
         path: '/',
       },
       rolling: true,
@@ -45,18 +43,6 @@ export async function registerRoutes(
   );
 
   console.log("✅ Session middleware configured");
-
-  // Session debugging middleware
-  app.use((req, res, next) => {
-    console.log("📋 Session Debug:", {
-      method: req.method,
-      path: req.path,
-      sessionID: req.sessionID,
-      userId: req.session?.userId,
-      cookie: req.session?.cookie
-    });
-    next();
-  });
 
   // ============ AUTH ROUTES ============
   app.post("/api/auth/login", login);
@@ -86,7 +72,6 @@ export async function registerRoutes(
 
   // ============ PORTFOLIO ROUTES ============
   
-  // Get all portfolio items (public)
   app.get("/api/portfolio", async (req, res) => {
     try {
       const items = await storage.getAllPortfolioItems();
@@ -97,7 +82,6 @@ export async function registerRoutes(
     }
   });
 
-  // Get single portfolio item by slug (public)
   app.get("/api/portfolio/:slug", async (req, res) => {
     try {
       const item = await storage.getPortfolioItemBySlug(req.params.slug);
@@ -111,7 +95,6 @@ export async function registerRoutes(
     }
   });
 
-  // Create portfolio item (Admin only)
   app.post("/api/portfolio", requireAuth, async (req, res) => {
     try {
       const validated = insertPortfolioItemSchema.parse(req.body);
@@ -123,7 +106,6 @@ export async function registerRoutes(
     }
   });
 
-  // Update portfolio item (Admin only)
   app.put("/api/portfolio/:id", requireAuth, async (req, res) => {
     try {
       const item = await storage.updatePortfolioItem(req.params.id, req.body);
@@ -137,7 +119,6 @@ export async function registerRoutes(
     }
   });
 
-  // Delete portfolio item (Admin only)
   app.delete("/api/portfolio/:id", requireAuth, async (req, res) => {
     try {
       await storage.deletePortfolioItem(req.params.id);
@@ -150,7 +131,6 @@ export async function registerRoutes(
 
   // ============ PRODUCTS ROUTES ============
   
-  // Get all products (public)
   app.get("/api/products", async (req, res) => {
     try {
       const allProducts = await storage.getAllProducts();
@@ -161,7 +141,6 @@ export async function registerRoutes(
     }
   });
 
-  // Get single product by slug (public)
   app.get("/api/products/:slug", async (req, res) => {
     try {
       const product = await storage.getProductBySlug(req.params.slug);
@@ -175,7 +154,6 @@ export async function registerRoutes(
     }
   });
 
-  // Create product (Admin only)
   app.post("/api/products", requireAuth, async (req, res) => {
     try {
       const validated = insertProductSchema.parse(req.body);
@@ -187,7 +165,6 @@ export async function registerRoutes(
     }
   });
 
-  // Update product (Admin only)
   app.put("/api/products/:id", requireAuth, async (req, res) => {
     try {
       const product = await storage.updateProduct(req.params.id, req.body);
@@ -201,7 +178,6 @@ export async function registerRoutes(
     }
   });
 
-  // Delete product (Admin only)
   app.delete("/api/products/:id", requireAuth, async (req, res) => {
     try {
       await storage.deleteProduct(req.params.id);
@@ -211,6 +187,77 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to delete product" });
     }
   });
+
+  // ============ AWARDS ROUTES ============
+  console.log("📋 Registering Awards routes...");
+  
+  app.get("/api/awards", async (req, res) => {
+    try {
+      console.log("📥 GET /api/awards - Fetching all awards");
+      const allAwards = await storage.getAllAwards();
+      console.log(`✅ Found ${allAwards.length} awards`);
+      res.json(allAwards);
+    } catch (error) {
+      console.error("❌ Get awards error:", error);
+      res.status(500).json({ message: "Failed to fetch awards" });
+    }
+  });
+
+  app.get("/api/awards/:id", async (req, res) => {
+    try {
+      console.log(`📥 GET /api/awards/${req.params.id}`);
+      const award = await storage.getAward(req.params.id);
+      if (!award) {
+        return res.status(404).json({ message: "Award not found" });
+      }
+      res.json(award);
+    } catch (error) {
+      console.error("❌ Get award error:", error);
+      res.status(500).json({ message: "Failed to fetch award" });
+    }
+  });
+
+  app.post("/api/awards", requireAuth, async (req, res) => {
+    try {
+      console.log("📥 POST /api/awards - Creating award");
+      const validated = insertAwardSchema.parse(req.body);
+      const award = await storage.createAward(validated);
+      console.log("✅ Award created:", award.id);
+      res.status(201).json(award);
+    } catch (error) {
+      console.error("❌ Create award error:", error);
+      res.status(400).json({ message: "Invalid award data", error });
+    }
+  });
+
+  app.put("/api/awards/:id", requireAuth, async (req, res) => {
+    try {
+      console.log(`📥 PUT /api/awards/${req.params.id} - Updating award`);
+      const award = await storage.updateAward(req.params.id, req.body);
+      if (!award) {
+        return res.status(404).json({ message: "Award not found" });
+      }
+      console.log("✅ Award updated:", award.id);
+      res.json(award);
+    } catch (error) {
+      console.error("❌ Update award error:", error);
+      res.status(400).json({ message: "Failed to update award" });
+    }
+  });
+
+  app.delete("/api/awards/:id", requireAuth, async (req, res) => {
+    try {
+      console.log(`📥 DELETE /api/awards/${req.params.id} - Deleting award`);
+      await storage.deleteAward(req.params.id);
+      console.log("✅ Award deleted");
+      res.json({ message: "Award deleted" });
+    } catch (error) {
+      console.error("❌ Delete award error:", error);
+      res.status(500).json({ message: "Failed to delete award" });
+    }
+  });
+
+  console.log("✅ Awards routes registered successfully");
 
   return httpServer;
 }

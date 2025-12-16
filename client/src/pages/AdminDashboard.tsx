@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { usePortfolio, useCreatePortfolio, useUpdatePortfolio, useDeletePortfolio } from "@/hooks/usePortfolio";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "@/hooks/useProducts";
+import { useAwards, useCreateAward, useUpdateAward, useDeleteAward } from "@/hooks/useAwards";
 import type { InsertPortfolioItem, InsertProduct } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,11 +29,20 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Plus, Trash2, Edit, LogOut, Loader2, X, Package, Images } from "lucide-react";
+import { Plus, Trash2, Edit, LogOut, Loader2, X, Package, Images, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type Category = "csr" | "plantation" | "distillery" | "bottle_shots";
+type InsertAward = {
+  name: string;
+  year: string;
+  organization: string;
+  category: string;
+  description?: string;
+  image?: string;
+  displayOrder: string;
+};
 
 interface PortfolioFormData {
   id?: string;
@@ -56,6 +66,17 @@ interface ProductFormData {
   longDescription: string;
 }
 
+type AwardFormData = {
+  id?: string;
+  name: string;
+  year: string;
+  organization: string;
+  category: string;
+  description: string;
+  image: string;
+  displayOrder: string;
+};
+
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -74,10 +95,17 @@ export default function AdminDashboard() {
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
   const deleteProductMutation = useDeleteProduct();
+
+  // Awards hooks
+  const { data: awards, isLoading: awardsLoading, refetch: refetchAwards } = useAwards();
+  const createAwardMutation = useCreateAward();
+  const updateAwardMutation = useUpdateAward();
+  const deleteAwardMutation = useDeleteAward();
   
   // Dialog states
   const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [awardDialogOpen, setAwardDialogOpen] = useState(false);
   
   // Form data states
   const [portfolioFormData, setPortfolioFormData] = useState<PortfolioFormData>({
@@ -98,6 +126,16 @@ export default function AdminDashboard() {
     ingredients: "",
     tastingNotes: "",
     longDescription: ""
+  });
+
+  const [awardFormData, setAwardFormData] = useState<AwardFormData>({
+    name: "",
+    year: "",
+    organization: "",
+    category: "certification",
+    description: "",
+    image: "",
+    displayOrder: "0"
   });
   
   const [imageInput, setImageInput] = useState("");
@@ -322,6 +360,86 @@ export default function AdminDashboard() {
     }
   };
 
+  // ============================================
+  // AWARDS FUNCTIONS
+  // ============================================
+  
+  const resetAwardForm = () => {
+    setAwardFormData({
+      name: "",
+      year: "",
+      organization: "",
+      category: "certification",
+      description: "",
+      image: "",
+      displayOrder: "0"
+    });
+  };
+
+  const openCreateAwardDialog = () => {
+    resetAwardForm();
+    setAwardDialogOpen(true);
+  };
+
+  const openEditAwardDialog = (award: any) => {
+    setAwardFormData({
+      id: award.id,
+      name: award.name,
+      year: award.year,
+      organization: award.organization,
+      category: award.category,
+      description: award.description || "",
+      image: award.image || "",
+      displayOrder: award.displayOrder || "0"
+    });
+    setAwardDialogOpen(true);
+  };
+
+  const handleSaveAward = async () => {
+    try {
+      if (!awardFormData.name || !awardFormData.year || !awardFormData.organization) {
+        alert("Please fill all required fields");
+        return;
+      }
+
+      const data: InsertAward = {
+        name: awardFormData.name,
+        year: awardFormData.year,
+        organization: awardFormData.organization,
+        category: awardFormData.category,
+        description: awardFormData.description,
+        image: awardFormData.image,
+        displayOrder: awardFormData.displayOrder
+      };
+
+      if (awardFormData.id) {
+        await updateAwardMutation.mutateAsync({ id: awardFormData.id, data });
+        alert("Award updated successfully!");
+      } else {
+        await createAwardMutation.mutateAsync(data);
+        alert("Award created successfully!");
+      }
+      
+      setAwardDialogOpen(false);
+      resetAwardForm();
+      refetchAwards();
+    } catch (error: any) {
+      console.error("Save award error:", error);
+      alert(error.message || "Failed to save award");
+    }
+  };
+
+  const handleDeleteAward = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this award?")) return;
+    try {
+      await deleteAwardMutation.mutateAsync(id);
+      alert("Award deleted successfully!");
+      refetchAwards();
+    } catch (error) {
+      alert("Failed to delete the award.");
+    }
+  };
+
   // Loading state
   if (isAuthChecking) {
     return (
@@ -362,12 +480,15 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 mb-8 bg-white/5 border border-white/10">
+           <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-8 bg-white/5 border border-white/10">
             <TabsTrigger value="portfolio" className="data-[state=active]:bg-primary data-[state=active]:text-black">
               <Images className="h-4 w-4 mr-2" /> Portfolio
             </TabsTrigger>
             <TabsTrigger value="products" className="data-[state=active]:bg-primary data-[state=active]:text-black">
               <Package className="h-4 w-4 mr-2" /> Products
+            </TabsTrigger>
+            <TabsTrigger value="awards" className="data-[state=active]:bg-primary data-[state=active]:text-black">
+              <Trophy className="h-4 w-4 mr-2" /> Awards
             </TabsTrigger>
           </TabsList>
 
@@ -570,6 +691,119 @@ export default function AdminDashboard() {
               </Table>
             </div>
           </TabsContent>
+         {/* ============================================ */}
+          {/* AWARDS TAB - NEW */}
+          {/* ============================================ */}
+          <TabsContent value="awards" className="space-y-8">
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {awardsLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 rounded-lg" />
+                ))
+              ) : (
+                <>
+                  <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                    <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Total Awards</h3>
+                    <p className="text-3xl font-bold font-serif text-primary">{awards?.length || 0}</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                    <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Certifications</h3>
+                    <p className="text-3xl font-bold font-serif text-primary">
+                      {awards?.filter(a => a.category === 'certification').length || 0}
+                    </p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                    <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Competitions</h3>
+                    <p className="text-3xl font-bold font-serif text-primary">
+                      {awards?.filter(a => a.category === 'competition').length || 0}
+                    </p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 p-6 rounded-lg">
+                    <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-1">Recognition</h3>
+                    <p className="text-3xl font-bold font-serif text-primary">
+                      {awards?.filter(a => a.category === 'recognition').length || 0}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex justify-end">
+              <Button onClick={openCreateAwardDialog} className="bg-primary text-black hover:bg-primary/90">
+                <Plus className="h-4 w-4 mr-2" /> Add Award
+              </Button>
+            </div>
+
+            {/* Table */}
+            <div className="rounded-md border border-white/10 bg-white/5 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-black/20">
+                  <TableRow className="border-white/10 hover:bg-transparent">
+                    <TableHead className="text-white">Order</TableHead>
+                    <TableHead className="text-white">Name</TableHead>
+                    <TableHead className="text-white">Year</TableHead>
+                    <TableHead className="text-white">Organization</TableHead>
+                    <TableHead className="text-white">Category</TableHead>
+                    <TableHead className="text-right text-white">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {awardsLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i} className="border-white/5">
+                        <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    awards?.map((award) => (
+                      <TableRow key={award.id} className="border-white/5 hover:bg-white/5">
+                        <TableCell className="font-mono text-muted-foreground">{award.displayOrder}</TableCell>
+                        <TableCell className="font-medium">{award.name}</TableCell>
+                        <TableCell>
+                          <span className="inline-block px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                            {award.year}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{award.organization}</TableCell>
+                        <TableCell>
+                          <span className="inline-block px-2 py-1 rounded-full bg-white/10 text-xs uppercase">
+                            {award.category}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => openEditAwardDialog(award)}>
+                              <Edit className="h-4 w-4 text-primary" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleDeleteAward(award.id)}
+                              disabled={deleteAwardMutation.isPending}
+                            >
+                              {deleteAwardMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 text-red-400" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
         </Tabs>
 
         {/* ============================================ */}
@@ -790,6 +1024,111 @@ export default function AdminDashboard() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 {productFormData.id ? "Update Product" : "Create Product"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+          {/* ============================================ */}
+        {/* AWARD DIALOG */}
+        {/* ============================================ */}
+        <Dialog open={awardDialogOpen} onOpenChange={setAwardDialogOpen}>
+          <DialogContent className="bg-card border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{awardFormData.id ? "Edit Award" : "Create New Award"}</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Award Name *</label>
+                <Input 
+                  value={awardFormData.name} 
+                  onChange={e => setAwardFormData(prev => ({...prev, name: e.target.value}))}
+                  placeholder="ISO 9001:2015 / Gold Medal"
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Year *</label>
+                  <Input 
+                    value={awardFormData.year} 
+                    onChange={e => setAwardFormData(prev => ({...prev, year: e.target.value}))}
+                    placeholder="2024"
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Display Order</label>
+                  <Input 
+                    value={awardFormData.displayOrder} 
+                    onChange={e => setAwardFormData(prev => ({...prev, displayOrder: e.target.value}))}
+                    placeholder="1"
+                    type="number"
+                    className="bg-white/5 border-white/10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Organization *</label>
+                <Input 
+                  value={awardFormData.organization} 
+                  onChange={e => setAwardFormData(prev => ({...prev, organization: e.target.value}))}
+                  placeholder="International Organization for Standardization"
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Category *</label>
+                <Select 
+                  value={awardFormData.category} 
+                  onValueChange={(val) => setAwardFormData(prev => ({...prev, category: val}))}
+                >
+                  <SelectTrigger className="bg-white/5 border-white/10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="certification">Certification</SelectItem>
+                    <SelectItem value="competition">Competition</SelectItem>
+                    <SelectItem value="recognition">Recognition</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Description</label>
+                <Textarea 
+                  value={awardFormData.description} 
+                  onChange={e => setAwardFormData(prev => ({...prev, description: e.target.value}))}
+                  placeholder="Quality Management System Certification"
+                  className="bg-white/5 border-white/10"
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold">Image URL (Optional)</label>
+                <Input 
+                  value={awardFormData.image} 
+                  onChange={e => setAwardFormData(prev => ({...prev, image: e.target.value}))}
+                  placeholder="/attached_assets/awards/iso-logo.png"
+                  className="bg-white/5 border-white/10"
+                />
+                <p className="text-xs text-muted-foreground">Certificate or organization logo</p>
+              </div>
+
+              <Button 
+                onClick={handleSaveAward} 
+                disabled={createAwardMutation.isPending || updateAwardMutation.isPending}
+                className="w-full bg-primary text-black hover:bg-primary/90"
+              >
+                {(createAwardMutation.isPending || updateAwardMutation.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {awardFormData.id ? "Update Award" : "Create Award"}
               </Button>
             </div>
           </DialogContent>
